@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  catalogserver:
+    image: catalogserver:latest
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./catalogserver/books.csv:/app/books.csv
+  orderserver:
+    image: orderserver:latest
+    ports:
+      - "5001:5001"
+    volumes:
+      - ./orderserver/order.db/orders.csv:/app/Order.Db/orders.csv
+
+  
