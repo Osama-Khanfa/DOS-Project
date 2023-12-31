@@ -8,7 +8,7 @@ WORKDIR /app/Order
 
 EXPOSE 5001
 ENV ASPNETCORE_URLS="http://0.0.0.0:5001"
-ENV MYURL=http://192.168.1.4:5000
+ENV MYURL=http://192.168.1.5:5000
 FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
 WORKDIR /src
 COPY ["OrderServer/OrderServer.csproj", "OrderServer/"]
@@ -24,6 +24,9 @@ FROM base as final
 WORKDIR /app/Order
 COPY --from=publish /app/Order/publish .
 COPY /OrderServer/Order.Db /app/Order/Order.Db
+COPY /MasterDb/orders.csv /app/Order/MasterDb/orders.csv
 RUN chown -R 1000:1000 /app/Order/Order.Db
+RUN chmod -R 777 /app/Order/MasterDb
+
 USER 1000
 ENTRYPOINT ["dotnet", "OrderServer.dll"]
