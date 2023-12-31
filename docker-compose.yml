@@ -3,15 +3,38 @@ version: '3.8'
 services:
   catalogserver:
     image: catalogserver:latest
+    container_name: catalogServer1
     ports:
       - "5000:5000"
     volumes:
       - ./catalogserver/books.csv:/app/books.csv
+      - ./masterdb/books.csv:/app/masterdb/books.csv
+  catalogserver2:
+    image: catalogserver:latest
+    container_name: catalogServer2
+    ports:
+      - "6000:5000"
+    volumes:
+      - ./catalogserver/books.csv:/app/books.csv
+      - ./masterdb/books.csv:/app/masterdb/books.csv
   orderserver:
     image: orderserver:latest
+    container_name: orderServer1
+
     ports:
-      - "5001:5001"
+      - "7000:5001"
     volumes:
       - ./orderserver/order.db/orders.csv:/app/Order.Db/orders.csv
+      - ./masterdb/orders.csv:/app/masterdb/orders.csv
+  orderserver2:
+    image: orderserver:latest
+    container_name: orderServer2
+    ports:
+      - "8000:5001"
+    volumes:
+      - ./orderserver/order.db/orders.csv:/app/Order.Db/orders.csv
+      - ./masterdb/orders.csv:/app/masterdb/orders.csv
 
+
+ 
   
