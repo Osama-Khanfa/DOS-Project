@@ -6,12 +6,14 @@ namespace BazarUi
 {
     public class Operations
     {
+        private static readonly LRUCache<string, string> _lruCache = new LRUCache<string, string>();
+
         public void Search(string topic)
         {
             Console.WriteLine($"Searching for items related to topic: {topic}");
             var path = Environment.GetEnvironmentVariable("CATALOGURL");
             path = path + "/Search/" + topic;
-            string jsonResponse = GetJsonResponseFromApi(path);
+            string jsonResponse = GetJsonResponseFromApi(path, topic);
 
             if (!string.IsNullOrEmpty(jsonResponse))
             {
@@ -23,6 +25,18 @@ namespace BazarUi
             {
                 Console.WriteLine("No results found.");
             }
+        }
+
+        private string GetJsonResponseFromApi(string path, string topic)
+        {
+            var socketsHandler = new SocketsHttpHandler
+            {
+                PooledConnectionLifetime = TimeSpan.FromMinutes(2)
+            };
+
+            HttpClient httpClient = new HttpClient(socketsHandler);
+            var result = httpClient.GetAsync(path).Result;
+            return result.Content.ReadAsStringAsync().Result;
         }
 
         private string GetJsonResponseFromApi(string path)
@@ -71,21 +85,48 @@ namespace BazarUi
 
         public void Info(int itemNumber)
         {
-            Console.WriteLine($"Fetching info for item number: {itemNumber}");
-            Console.WriteLine($"Searching for items related to topic: {itemNumber}");
-            var path = Environment.GetEnvironmentVariable("CATALOGURL");
-            path = path + "/Book/" + itemNumber;
-            string jsonResponse = GetJsonResponseFromApi(path);
+            string cachedData = _lruCache.Get(itemNumber.ToString());
 
-            if (!string.IsNullOrEmpty(jsonResponse))
+            if (!EqualityComparer<string>.Default.Equals(cachedData, default))
             {
+                Console.WriteLine($"Cached Data: {cachedData}");
                 BookSearchResult searchResults =
-                    JsonUtility.DeserializeSearchResultsForItem<BookSearchResult>(jsonResponse);
+                    JsonUtility.DeserializeSearchResultsForItem<BookSearchResult>(cachedData);
                 DisplaySearchResults(searchResults);
             }
             else
             {
-                Console.WriteLine("No results found.");
+                Console.WriteLine($"Fetching info for item number: {itemNumber}");
+                Console.WriteLine($"Searching for items related to topic: {itemNumber}");
+                var path = Environment.GetEnvironmentVariable("CATALOGURL");
+
+                path = path + "/Book/" + itemNumber;
+                Console.WriteLine(path);
+                string jsonResponse = String.Empty;
+                try
+                {
+                    jsonResponse = GetJsonResponseFromApi(path);
+                }
+                catch (Exception error)
+                {
+                    Console.Error.WriteLine($"Error: {error.Message}");
+                }
+
+                Console.WriteLine($"Data fetched from backend and added to the cache:");
+
+                if (!string.IsNullOrEmpty(jsonResponse))
+                {
+                    BookSearchResult searchResults =
+                        JsonUtility.DeserializeSearchResultsForItem<BookSearchResult>(jsonResponse);
+                    DisplaySearchResults(searchResults);
+                    string keyToAdd = itemNumber.ToString();
+                    string valueToAdd = jsonResponse;
+                    _lruCache.Add(keyToAdd, valueToAdd);
+                }
+                else
+                {
+                    Console.WriteLine("No results found.");
+                }
             }
         }
 
@@ -102,8 +143,15 @@ namespace BazarUi
                 var bookreturn = JsonUtility.DeserializeSearchResultsForItem<BookSearchResult>(
                     result.Result
                 );
-
-                Console.WriteLine($"\n Thank You for Buying {bookreturn.title}");
+                if (bookreturn != null)
+                {
+                    _lruCache.Update(bookreturn.bookId.ToString(), result.Result);
+                    Console.WriteLine($"\n Thank You for Buying {bookreturn.title}");
+                }
+                else
+                {
+                    Console.WriteLine($"\n Sorry Book Is Not Avaialble");
+                }
             }
             else
             {
