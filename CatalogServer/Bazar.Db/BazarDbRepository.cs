@@ -7,10 +7,17 @@ namespace CatalogServer.Bazar.Db
 {
     public class BazarDbRepository
     {
+        private readonly object _locker = new object();
+
         public Book RetriveBookById(int id)
         {
-            var books = ReadCsvFile();
-            return books.FirstOrDefault(book => book.BookId == id);
+            lock (_locker)
+            {
+                var books = ReadCsvFile();
+
+                Console.WriteLine(id);
+                return books.FirstOrDefault(book => book.BookId == id);
+            }
         }
 
         public Book EditStock(int bookId, int newStock)
@@ -22,7 +29,8 @@ namespace CatalogServer.Bazar.Db
             if (bookToEdit != null)
             {
                 bookToEdit.Stock = newStock;
-                WriteCsvFile(books);
+                WriteCsvMasterFile(books);
+                Task.Run(() => WriteCsvFile(books));
             }
 
             return bookToEdit;
@@ -62,6 +70,23 @@ namespace CatalogServer.Bazar.Db
             )
             {
                 csv.WriteRecords(books);
+            }
+        }
+
+        private void WriteCsvMasterFile(List<Book> books)
+        {
+            lock (_locker)
+            {
+                using (var writer = new StreamWriter("MasterDb/books.csv"))
+                using (
+                    var csv = new CsvWriter(
+                        writer,
+                        new CsvConfiguration(CultureInfo.InvariantCulture)
+                    )
+                )
+                {
+                    csv.WriteRecords(books);
+                }
             }
         }
     }
