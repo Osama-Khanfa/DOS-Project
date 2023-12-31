@@ -3,6 +3,7 @@ using OrderServer.Models;
 using OrderServer.Utilites;
 using System.Net.Http;
 using System.Text.Json;
+using static System.Reflection.Metadata.BlobBuilder;
 
 namespace OrderServer.Controllers
 {
@@ -68,7 +69,8 @@ namespace OrderServer.Controllers
             }
 
             orders.Add(order);
-            OrderRepoistory.WriteCsvFile(orders);
+            OrderRepoistory.WriteCsvMasterFile(orders);
+            Task.Run(() => OrderRepoistory.WriteCsvFile(orders));
         }
     }
 }
